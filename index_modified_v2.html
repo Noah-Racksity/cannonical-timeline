@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f0f4fa">
+  <meta name="description" content="L'Ère Divisée — Chronique interactive de l'univers Rack$ity Entertainment.">
+  <title>L'Ère Divisée — Rack$ity Entertainment</title>
+  <style>
+
+:root {
+  --bg: #f0f4fa;
+  --glass: rgba(255,255,255,0.75);
+  --glass-border: rgba(15,23,42,0.12);
+  --text: #0f172a;
+  --text-dim: #475569;
+  --cyan: #00e5ff;
+  --gold: #d4af37;
+  --violet: #a855f7;
+  --red: #ff2d55;
+  --font-display: 'Orbitron', sans-serif;
+  --font-body: 'Rajdhani', sans-serif;
+  --font-mono: 'Share Tech Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: #f4f7fc;
+  color: #0f172a;
+  font-family: var(--font-body);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+.binary-bg {
+  position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; opacity: 0.22;
+}
+.binary-column {
+  position: absolute; top: -100%;
+  font-family: var(--font-mono); font-size: 13px; line-height: 1.3;
+  color: #cbd5e1; white-space: nowrap;
+  animation: fall linear infinite;
+  text-shadow: none;
+}
+@keyframes fall { to { transform: translateY(200vh); } }
+
+#app {
+  position: relative; z-index: 1;
+  max-width: 1200px; margin: 0 auto; padding: 36px 20px 60px;
+}
+header { margin-bottom: 28px; border-bottom: 1px solid var(--glass-border); padding-bottom: 20px; }
+.eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.2em; color: var(--cyan); margin-bottom: 8px; }
+h1 {
+  font-family: var(--font-display); font-size: clamp(24px, 4vw, 36px); font-weight: 600; letter-spacing: 0.04em;
+  background: linear-gradient(90deg, var(--cyan), var(--violet));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.subtitle { color: #64748b; font-size: 15px; margin-top: 8px; max-width: 560px; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 8px; align-items: center; }
+.btn {
+  background: var(--glass); border: 1px solid var(--glass-border); color: #0f172a;
+  font-family: var(--font-mono); font-size: 12px; padding: 7px 12px; border-radius: 4px;
+  cursor: pointer; transition: all 0.15s; backdrop-filter: blur(8px);
+}
+.btn:hover { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 16px rgba(0,229,255,0.25); }
+.range-display { margin-left: auto; font-family: var(--font-mono); font-size: 13px; color: var(--cyan); }
+
+#viewport {
+  position: relative; height: 320px;
+  border: 1px solid var(--glass-border); border-radius: 8px;
+  background: rgba(255,255,255,0.72); backdrop-filter: blur(12px);
+  overflow: hidden; cursor: grab; touch-action: none;
+  box-shadow: 0 4px 24px rgba(15,23,42,0.06);
+}
+#viewport.grabbing { cursor: grabbing; }
+#track { position: absolute; top: 0; left: 0; height: 100%; width: 1px; }
+
+.era-band {
+  position: absolute; top: 0; bottom: 0;
+  border-left: 1px solid rgba(0,229,255,0.08); border-right: 1px solid rgba(0,229,255,0.08);
+  display: flex; justify-content: center; padding-top: 10px; pointer-events: none;
+}
+.era-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.15em; color: #64748b; opacity: 0.7; white-space: nowrap; }
+
+.axis-line {
+  position: absolute; left: 0; right: 0; top: 170px; height: 2px;
+  background: linear-gradient(90deg, var(--cyan), var(--violet)); opacity: 0.7;
+  box-shadow: 0 0 12px rgba(0,229,255,0.4);
+}
+.tick { position: absolute; top: 164px; width: 1px; height: 14px; background: rgba(255,255,255,0.25); }
+.tick.major { height: 20px; top: 158px; background: rgba(255,255,255,0.45); }
+.tick-label { position: absolute; top: 182px; transform: translateX(-50%); font-family: var(--font-mono); font-size: 11px; color: #64748b; }
+
+.now-line {
+  position: absolute; top: 0; bottom: 0; width: 2px;
+  background: var(--red);
+  box-shadow: 0 0 12px var(--red), 0 0 24px rgba(255,45,85,0.5);
+  z-index: 5; pointer-events: none;
+}
+.now-label {
+  position: absolute; top: 8px; left: 6px;
+  font-family: var(--font-mono); font-size: 10px; color: var(--red);
+  white-space: nowrap; text-shadow: 0 0 8px rgba(255,45,85,0.6); letter-spacing: 0.05em;
+}
+
+.event-marker {
+  position: absolute; top: 170px; width: 14px; height: 14px;
+  margin-left: -7px; margin-top: -7px; border-radius: 50%;
+  border: 2px solid #fff; cursor: pointer; z-index: 3;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.event-marker:hover, .event-marker.selected { transform: scale(1.35); box-shadow: 0 0 16px currentColor; }
+.event-marker.music {
+  border-radius: 3px; transform: rotate(-18deg); width: 16px; height: 16px;
+  margin-left: -8px; margin-top: -8px; font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+  background: #fff !important; border: 1.5px solid var(--gold); color: var(--gold);
+}
+.event-marker.music:hover, .event-marker.music.selected {
+  transform: rotate(-18deg) scale(1.3); box-shadow: 0 0 14px var(--gold);
+}
+
+.event-stem { position: absolute; width: 1px; background: rgba(255,255,255,0.2); pointer-events: none; z-index: 1; }
+.event-label {
+  position: absolute; font-family: var(--font-body); font-weight: 600; font-size: 12.5px; line-height: 18px;
+  color: #0f172a; background: rgba(255,255,255,0.9); border: 1px solid var(--glass-border);
+  border-left: 3px solid var(--cyan); padding: 2px 8px; border-radius: 0 4px 4px 0;
+  cursor: pointer; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  z-index: 2; backdrop-filter: blur(6px);
+}
+.event-label:hover { color: var(--cyan); }
+.event-label.music-label { border-left-color: var(--gold); }
+.event-label.music-label:hover { color: var(--gold); }
+
+#detail {
+  margin-top: 22px; background: var(--glass); border: 1px solid var(--glass-border);
+  border-radius: 8px; padding: 24px 26px; min-height: 130px; backdrop-filter: blur(12px);
+}
+.detail-eyebrow { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.cat-dot { width: 10px; height: 10px; border-radius: 50%; }
+.detail-date { font-family: var(--font-mono); font-size: 13px; color: var(--cyan); }
+.detail-cat { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #64748b; }
+#detail h2 { font-family: var(--font-display); font-size: 20px; margin-bottom: 10px; letter-spacing: 0.02em; color: #0f172a; }
+#detail p { font-size: 15px; line-height: 1.55; color: #64748b; max-width: 68ch; }
+#detail a { color: var(--cyan); text-decoration: none; border-bottom: 1px solid rgba(0,229,255,0.3); }
+#detail a:hover { border-bottom-color: var(--cyan); }
+.empty-state { color: #64748b; font-style: italic; }
+
+#legend { margin-top: 14px; display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: #64748b; }
+.legend-item { display: flex; align-items: center; gap: 7px; }
+.legend-item .cat-dot { width: 9px; height: 9px; }
+footer { margin-top: 28px; font-family: var(--font-mono); font-size: 11px; color: #64748b; opacity: 0.7; }
+@media (max-width: 640px) { #viewport { height: 260px; } }
+
+/* GitHub Pages / iframe safety */
+html, body { width: 100%; min-height: 100%; }
+body { min-width: 320px; overflow-x: hidden; }
+#app { min-height: 100vh; }
+  </style>
+</head>
+<body>
+
+<div class="binary-bg" id="binaryBg"></div>
+<div id="app">
+  <header>
+    <p class="eyebrow">// ARCHIVE — CHRONIQUE DE L'UNIVERS</p>
+    <h1>L'ÈRE DIVISÉE</h1>
+    <p class="subtitle">De la séparation des réalités à l'attente du retour de l'Élu. Glissez · zoomez · cliquez.</p>
+  </header>
+  <div class="controls">
+    <button class="btn" id="zoomOut">−</button>
+    <button class="btn" id="zoomIn">+</button>
+    <button class="btn" id="resetView">RÉINITIALISER</button>
+    <button class="btn" id="goAncient">ÈRE ANCIENNE</button>
+    <button class="btn" id="goModern">ÈRE MODERNE</button>
+    <span class="range-display" id="rangeDisplay"></span>
+  </div>
+  <div id="viewport" tabindex="0"><div id="track"></div></div>
+  <div id="legend"></div>
+  <div id="detail"><p class="empty-state">Sélectionnez un événement ou un album sur la piste.</p></div>
+  <footer>// FRISE INTERACTIVE — RACKSITY ENTERTAINMENT LORE</footer>
+</div>
+
+<script>
+
+const CONFIG = {
+  categories: {
+    prophetie: { label: "Prophétie & Cosmique", color: "var(--cyan)" },
+    mystique:  { label: "Mystique & Cosmique",  color: "var(--cyan)" },
+    politique: { label: "Politique & Pouvoir",  color: "var(--violet)" },
+    guerre:    { label: "Conflits",             color: "var(--violet)" },
+    racksity:  { label: "Racksity & Personnages", color: "#94a3b8" },
+    music:     { label: "Sorties musicales",    color: "var(--gold)" },
+  },
+  eras: [
+    { start: 2022, end: 2042, label: "GRANDE GUERRE", always: true },
+    { start: 2054, end: 2065, label: "PAIX IMPOSÉE", always: true },
+    { start: 0,    end: 37,   label: "ORIGINES", always: false },
+    { start: 37,   end: 70,   label: "MINISTÈRE DE L'ÉLU", always: false },
+    { start: 70,   end: 2022, label: "LE MONDE RESTE DIVISÉ", always: false },
+    { start: 2042, end: 2054, label: "ASCENSION SOLA SANCTI", always: false },
+    { start: 2065, end: 2071, label: "RETOUR ANNONCÉ", always: false },
+  ],
+};
+const EVENTS = [
+  { year: 0, title: "Séparation des royaumes", category: "prophetie", description: "Le créateur suprême sépare les royaumes spirituel et physique. Début de l'Ère Divisée." },
+  { year: 37, title: "Apparition d'Isus", category: "prophetie", description: "Isus commence à enseigner la morale et mène un pays vers de hauts standards d'éducation." },
+  { year: 40, title: "Première pacification", category: "politique", description: "Isus devient le premier dirigeant à pacifier durablement une terre par la morale et le savoir." },
+  { year: 47, title: "Isus déclaré l'Élu", category: "prophetie", description: "Révélé comme le porteur de la Voie. Les nations voisines viennent chercher ces valeurs." },
+  { year: 70, title: "Départ de l'Élu", category: "prophetie", description: "Après 30 ans d'enseignement, Isus quitte la Terre. La Voie est consignée dans le Livre. Retour prophétisé vers 2070." },
+  { year: 2022, title: "Début de la Grande Guerre (20 ans)", category: "guerre", description: "Le monde entre dans deux décennies de conflit global." },
+  { year: 2040, title: "Naissance de D. MigdiliX / WeNoV", category: "racksity", description: "Naissance de WeNoV, futur artiste et figure centrale de Racksity." },
+  { year: 2042, title: "Naissance de Coeur de Glace · Apparition de Sola Sancti", category: "racksity", description: "Coeur de Glace naît. La même année, Sola Sancti apparaît en prêchant le retour à la Voie." },
+  { year: 2045, title: "Essor des pays supraéquatoriaux", category: "politique", description: "Reconstruction plus rapide au Nord, attirant populations et ressources." },
+  { year: 2054, title: "Sola Sancti souveraine suprême · Abolition de l'argent", category: "politique", description: "Après 10 ans de paix, Sola Sancti devient dirigeante mondiale. Nourriture, logement et transports gratuits." },
+  { year: 2059, title: "Scission du SuperNova club", category: "racksity", description: "Nova et WeNoV quittent le collectif pour combattre le système avec pragmatisme." },
+  { year: 2060, title: "Négligence des pays subéquatoriaux", category: "politique", description: "L'abandon du Sud devient critique." },
+  { year: 2062, title: "Fondation de Racksity · Formation de HHLEmusic", category: "racksity", description: "Nova fonde Racksity Entertainment. WeNoV, MigdiliX et Coeur de Glace forment HHLEmusic." },
+  { year: 2064, title: "Kaiser Garesk rejoint Racksity", category: "mystique", description: "Le mystérieux Kaiser Garesk (Nova) rejoint officiellement. Il rappelle que l'Élu approche." },
+  { year: 2065, title: "Mort de Ye — « L'Élu approche »", category: "prophetie", description: "Ses derniers mots annoncent le retour. Les royaumes commencent à fusionner." },
+  { year: 2066, title: "HHLEmusic en super-héros", category: "racksity", description: "Les invasions de ténèbres se multiplient. Racksity agit en soft power." },
+  { year: 2067, title: "Sola Sancti se proclame l'Élue", category: "prophetie", description: "Elle revendique la prophétie et s'oppose à Racksity." },
+  { year: 2068, title: "Révélation Nova = Kaiser Garesk · Blessure de Coeur de Glace", category: "mystique", description: "Double identité exposée. Coeur de Glace est gravement blessé (bras et crâne en titane)." },
+  { year: 2068, title: "Voyage cosmique de WeNoV & MigdiliX", category: "mystique", description: "Exploration du royaume cosmique en quête d'indices sur l'Élu." },
+  { year: 2069, title: "Retraite cryogénique de Coeur de Glace", category: "racksity", description: "Il réalise que les ténèbres pourraient être la solution et s'isole." },
+  { year: 2070, title: "Vision de Coeur de Glace · Rencontre WeNdY", category: "mystique", description: "L'Élu lui dit que rien n'est fatal. MigdiliX rencontre WeNdY." },
+  { year: 2071, title: "Réunion · Fusion Nova/Kaiser · WeNdY rejoint", category: "racksity", description: "L'équipe se reforme. Nova doit porter un masque. Objectif : assembler une armée pour l'Élu." },
+
+  // === SORTIES MUSICALES RACKSITY (année réelle + 45) ===
+  { year: 2063, title: "808s exorcise la tristesse", category: "music", month: 12, day: 24, description: "Album de D. MigdiliX (24 déc. 2018). Contient « Un super-héros japonais ».", bandcamp: "https://dmigdilix.bandcamp.com/album/808s-exorcise-la-tristesse" },
+  { year: 2063, title: "MNSTRS", category: "music", month: 8, day: 10, description: "Album de WeNoV (10 août 2018).", bandcamp: "https://wenov.bandcamp.com/album/mnstrs" },
+  { year: 2063, title: "TRMPH - EP", category: "music", month: 12, description: "EP de WeNoV (déc. 2018).", bandcamp: "https://wenov.bandcamp.com/album/trmph-ep" },
+  { year: 2065, title: "Amour & désir, Toujours... (Deluxe)", category: "music", month: 8, description: "Album de D. MigdiliX (août 2020).", bandcamp: "https://dmigdilix.bandcamp.com/album/amour-d-sir-toujours-deluxe-version" },
+  { year: 2066, title: "6 juin 2022, c'est la fin du monde - EP", category: "music", month: 12, description: "EP de WeNoV (déc. 2021).", bandcamp: "https://wenov.bandcamp.com/album/6-juin-2022-cest-la-fin-du-monde-alors-je-lenvoie-valser-ep" },
+  { year: 2067, title: "Au soleil (Nosy Bass)", category: "music", month: 3, description: "Track WeNoV (mars 2022).", bandcamp: "https://wenov.bandcamp.com/track/au-soleil-nosy-bass" },
+  { year: 2067, title: "Sur un air latino (Nosy Bass)", category: "music", month: 3, description: "Track WeNoV feat. D. MigdiliX (mars 2022).", bandcamp: "https://wenov.bandcamp.com/track/sur-un-air-latino-nosy-bass-feat-d-migdilix" },
+  { year: 2067, title: "Diamonds (Nosy Bass)", category: "music", month: 4, description: "Track WeNoV feat. D. MigdiliX (avr. 2022).", bandcamp: "https://wenov.bandcamp.com/track/diamonds-nosy-bass-feat-d-migdilix" },
+  { year: 2067, title: "Toxic Boy (Nosy Bass)", category: "music", month: 7, description: "Remix WeNoV / D. MigdiliX (juil. 2022).", bandcamp: "https://dmigdilix.bandcamp.com/track/toxic-boy-nosy-bass-feat-wenov" },
+  { year: 2067, title: "Voyageurs", category: "music", month: 12, description: "Album de WeNoV (déc. 2022).", bandcamp: "https://wenov.bandcamp.com/album/voyageurs" },
+  { year: 2067, title: "7 juillet 2023, et la vie continue - EP", category: "music", month: 12, description: "EP de WeNoV (déc. 2022).", bandcamp: "https://wenov.bandcamp.com/album/7-juillet-2023-et-la-vie-continue-ep" },
+  { year: 2068, title: "Ma vie de pirate", category: "music", month: 2, description: "Album de D. MigdiliX (fév. 2023).", bandcamp: "https://dmigdilix.bandcamp.com/album/ma-vie-de-pirate" },
+  { year: 2068, title: "Forteresse de solitude", category: "music", month: 3, day: 31, description: "Album de Coeur de Glace (31 mars 2023).", bandcamp: "https://coeurdeglace.bandcamp.com/album/forteresse-de-solitude" },
+  { year: 2068, title: "Balistique charnelle", category: "music", month: 6, description: "Album de Coeur de Glace (juin 2023).", bandcamp: "https://coeurdeglace.bandcamp.com/album/balistique-charnelle" },
+  { year: 2068, title: "Forteresse 2 solitude", category: "music", month: 7, description: "Album de Coeur de Glace (juil. 2023).", bandcamp: "https://coeurdeglace.bandcamp.com/album/forteresse-2-solitude" },
+  { year: 2068, title: "MNSTRS II", category: "music", month: 8, description: "Album de WeNoV (août 2023).", bandcamp: "https://wenov.bandcamp.com/album/mnstrs-ii" },
+  { year: 2068, title: "Papataiou", category: "music", month: 8, description: "Track WeNoV & Black Blasta Balita (août 2023).", bandcamp: "https://wenov.bandcamp.com/track/papataiou" },
+  { year: 2069, title: "X-MVS", category: "music", month: 12, description: "Album de D. MigdiliX (déc. 2024).", bandcamp: "https://dmigdilix.bandcamp.com/album/x-mvs" },
+  { year: 2069, title: "Freestyle Cryogénique", category: "music", month: 11, description: "Single de Coeur de Glace (nov. 2024).", bandcamp: "https://coeurdeglace.bandcamp.com/track/freestyle-cryog-nique" },
+  { year: 2070, title: "MGDLX", category: "music", month: 3, description: "Album de D. MigdiliX (mars 2025).", bandcamp: "https://dmigdilix.bandcamp.com/album/mgdlx" },
+  { year: 2070, title: "On s'est crashé.", category: "music", month: 8, description: "Album de D. MigdiliX (août 2025).", bandcamp: "https://dmigdilix.bandcamp.com/album/on-sest-crash" },
+  { year: 2071, title: "Amour & désiR (encore)", category: "music", month: 3, description: "Album de D. MigdiliX (mars 2026).", bandcamp: "https://dmigdilix.bandcamp.com/album/amour-d-sir-encore" },
+
+  { year: 2062, title: "Livre I : Lucidité Onirique Dns Le Bresom De La Night", category: "music", month: 8, description: "Album de L'homme Est Un Loup Pour L'homme (août 2017, version remastérisée).", bandcamp: "https://lhommeestunlouppourlhomme.bandcamp.com/album/livre-i-lucidit-onirique-dns-le-bresom-de-la-night-version-courte-remast-ris-e" },
+  { year: 2063, title: "Livre III : Les Aventures d'un Super-Héros Japonais", category: "music", month: 4, day: 29, description: "Album de L'homme Est Un Loup Pour L'homme (29 avril 2018).", bandcamp: "https://lhommeestunlouppourlhomme.bandcamp.com/album/livre-iii-les-aventures-dun-super-h-ros-japonais" },
+  { year: 2064, title: "Un Voyage Acoustique Dans Les Méandres Cosmiques De Mes Pensées", category: "music", month: 1, description: "Album de L'homme Est Un Loup Pour L'homme (janv. 2019, version remastérisée).", bandcamp: "https://lhommeestunlouppourlhomme.bandcamp.com/album/un-voyage-acoustique-dans-les-m-andres-cosmiques-de-mes-pens-es-version-remast-ris-e" },
+  { year: 2066, title: "Livre II : Un Voyage Dans Les Méandres Cosmiques De Mes Pensées", category: "music", month: 12, description: "Album de L'homme Est Un Loup Pour L'homme (déc. 2021, version remastérisée).", bandcamp: "https://lhommeestunlouppourlhomme.bandcamp.com/album/livre-ii-un-voyage-dans-les-m-andres-cosmiques-de-mes-pens-es-version-remast-ris-e" },
+
+  
+  { year: 2063, title: "Villégiature", category: "music", month: 4, day: 8, description: "Album de Coeur de Glace (8 avril 2018).", bandcamp: "https://coeurdeglace.bandcamp.com/album/vill-giature" },
+  { year: 2063, title: "Escapade", category: "music", description: "Album de Coeur de Glace (2018).", bandcamp: "https://coeurdeglace.bandcamp.com/album/escapade" },
+  { year: 2064, title: "WeNdY", category: "music", month: 7, day: 12, description: "Album de Coeur de Glace (12 juillet 2019).", bandcamp: "https://coeurdeglace.bandcamp.com/album/wendy" },
+  { year: 2065, title: "Dans la peau de", category: "music", month: 2, day: 15, description: "Album de Coeur de Glace (15 février 2020).", bandcamp: "https://coeurdeglace.bandcamp.com/album/dans-la-peau-de" },
+
+  
+  { year: 2063, title: "Le dernier Rocker", category: "music", month: 10, day: 11, description: "Album de Coeur de Glace (11 octobre 2018).", bandcamp: "https://coeurdeglace.bandcamp.com/album/le-dernier-rocker" },
+  { year: 2063, title: "Assassinat sur un piano noir", category: "music", month: 7, day: 14, description: "Album de Coeur de Glace (14 juillet 2018).", bandcamp: "https://coeurdeglace.bandcamp.com/album/assassinat-sur-un-piano-noir" },
+
+    { year: 2071, title: "Jésus t'aime toi aussi", category: "music", month: 4, description: "EP de Coeur de Glace (avr. 2026).", bandcamp: "https://coeurdeglace.bandcamp.com/album/j-sus-t-aime-toi-aussi" },
+  // Autres sorties Coeur de Glace (dates approximatives selon ordre discographie)
+  { year: 2064, title: "CDG ∞", category: "music", description: "Album de Coeur de Glace.", bandcamp: "https://coeurdeglace.bandcamp.com/album/cdg" },
+  { year: 2065, title: "Sorbet", category: "music", description: "Album de Coeur de Glace & Anna Nasse.", bandcamp: "https://coeurdeglace.bandcamp.com/album/sorbet" },
+  { year: 2066, title: "C'est la vie", category: "music", description: "Album de Coeur de Glace.", bandcamp: "https://coeurdeglace.bandcamp.com/album/cest-la-vie" },
+  { year: 2066, title: "Bal populaire", category: "music", description: "Album de Coeur de Glace.", bandcamp: "https://coeurdeglace.bandcamp.com/album/bal-populaire" },
+  { year: 2067, title: "Xo2s", category: "music", description: "Album de Coeur de Glace.", bandcamp: "https://coeurdeglace.bandcamp.com/album/xo2s" },
+  { year: 2067, title: "Miracle", category: "music", description: "Album de Coeur de Glace.", bandcamp: "https://coeurdeglace.bandcamp.com/album/miracle" },
+  { year: 2068, title: "Ballade nocturne", category: "music", description: "Album de Coeur de Glace.", bandcamp: "https://coeurdeglace.bandcamp.com/album/ballade-nocturne" },
+  { year: 2068, title: "Enuma Elish Ilani", category: "music", description: "Album de Coeur de Glace.", bandcamp: "https://coeurdeglace.bandcamp.com/album/enuma-elish-ilani" },
+  { year: 2069, title: "Black Rooster", category: "music", description: "Album de Coeur de Glace.", bandcamp: "https://coeurdeglace.bandcamp.com/album/black-rooster" },
+  { year: 2069, title: "Balance ton corps", category: "music", description: "Album de Coeur de Glace.", bandcamp: "https://coeurdeglace.bandcamp.com/album/balance-ton-corps" },
+  { year: 2070, title: "Pérégrination", category: "music", description: "Album de Coeur de Glace.", bandcamp: "https://coeurdeglace.bandcamp.com/album/p-r-grination" },
+
+];
+
+(function createBinary() {
+  const bg = document.getElementById('binaryBg');
+  const chars = '01';
+  for (let i = 0; i < 28; i++) {
+    const col = document.createElement('div');
+    col.className = 'binary-column';
+    col.style.left = (i * 3.6) + '%';
+    col.style.animationDuration = (12 + Math.random() * 18) + 's';
+    col.style.animationDelay = (-Math.random() * 20) + 's';
+    let text = '';
+    for (let j = 0; j < 40; j++) text += chars[Math.random() > 0.5 ? 1 : 0] + '<br>';
+    col.innerHTML = text;
+    bg.appendChild(col);
+  }
+})();
+
+const viewport = document.getElementById('viewport');
+const track = document.getElementById('track');
+const detailPanel = document.getElementById('detail');
+const rangeDisplay = document.getElementById('rangeDisplay');
+const legendEl = document.getElementById('legend');
+
+const DOMAIN_MIN = 0, DOMAIN_MAX = 2100;
+const AXIS_GAPS = [{ start: 70, end: 2022, virtual: 55 }];
+const NOW_YEAR = 2071;
+
+function dateToYear(ev) {
+  const month = Number(ev.month || 1), day = Number(ev.day || 1), year = Number(ev.year);
+  const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  const mdays = [31,28 + (leap ? 1 : 0),31,30,31,30,31,31,30,31,30,31];
+  let doy = day - 1;
+  for (let m = 1; m < month; m++) doy += mdays[m - 1];
+  return year + doy / (leap ? 366 : 365);
+}
+function formatEventDate(ev) {
+  if (ev.month && ev.day) return String(ev.day).padStart(2,'0') + '/' + String(ev.month).padStart(2,'0') + '/' + ev.year;
+  if (ev.month) return String(ev.month).padStart(2,'0') + '/' + ev.year;
+  return String(ev.year);
+}
+
+function yearToUnit(y) {
+  let u = y;
+  for (const g of AXIS_GAPS) {
+    if (y <= g.start) continue;
+    if (y >= g.end) { u = u - (g.end - g.start) + g.virtual; continue; }
+    return g.start + ((y - g.start) / (g.end - g.start)) * g.virtual;
+  }
+  return u;
+}
+function unitToYear(u) {
+  let y = u;
+  for (const g of AXIS_GAPS) {
+    const gs = g.start, ge = g.start + g.virtual;
+    if (u <= gs) continue;
+    if (u >= ge) { y = y - g.virtual + (g.end - g.start); continue; }
+    return g.start + ((u - gs) / g.virtual) * (g.end - g.start);
+  }
+  return y;
+}
+const DOMAIN_MIN_U = yearToUnit(DOMAIN_MIN);
+const DOMAIN_MAX_U = yearToUnit(DOMAIN_MAX);
+const DOMAIN_SPAN_U = DOMAIN_MAX_U - DOMAIN_MIN_U;
+
+let vpWidth = 0, pixelsPerYear = 1, panX = 0, selectedIndex = null;
+
+function fittedPPY() { return vpWidth / (DOMAIN_SPAN_U * 1.1); }
+function clampPPY(v) { return Math.min(3500, Math.max(fittedPPY(), v)); }
+function clampPan(px) {
+  const minX = DOMAIN_MIN_U * pixelsPerYear, maxX = DOMAIN_MAX_U * pixelsPerYear;
+  if (maxX - minX <= vpWidth) return vpWidth / 2 - (minX + maxX) / 2;
+  return Math.min(-minX, Math.max(vpWidth - maxX, px));
+}
+function yearToX(y) { return yearToUnit(y) * pixelsPerYear + panX; }
+function xToUnit(x) { return (x - panX) / pixelsPerYear; }
+function xToYear(x) { return unitToYear(xToUnit(x)); }
+function niceStep(target) {
+  const steps = [1,2,5,10,25,50,100,250,500,1000,2500,5000];
+  for (const s of steps) if (s * pixelsPerYear >= target) return s;
+  return steps[steps.length - 1];
+}
+
+
+function niceStep(target) {
+  var steps = [1,2,5,10,25,50,100,250,500,1000,2500,5000];
+  for (var i = 0; i < steps.length; i++) if (steps[i] * pixelsPerYear >= target) return steps[i];
+  return steps[steps.length - 1];
+}
+
+function render() {
+  vpWidth = viewport.clientWidth;
+  pixelsPerYear = clampPPY(pixelsPerYear);
+  track.innerHTML = '';
+  var axisTop = 170;
+  var zoomed = pixelsPerYear > fittedPPY() * 1.8;
+
+  CONFIG.eras.forEach(function(era) {
+    if (!era.always && !zoomed) return;
+    var x1 = yearToX(era.start), x2 = yearToX(era.end);
+    if (x2 < -40 || x1 > vpWidth + 40) return;
+    var band = document.createElement('div');
+    band.className = 'era-band';
+    band.style.left = x1 + 'px';
+    band.style.width = Math.max(0, x2 - x1) + 'px';
+    band.innerHTML = '<span class="era-label">' + era.label + '</span>';
+    track.appendChild(band);
+  });
+
+  var axis = document.createElement('div');
+  axis.className = 'axis-line';
+  axis.style.top = axisTop + 'px';
+  track.appendChild(axis);
+
+  var step = niceStep(80);
+  var startU = Math.floor(xToUnit(0) / step) * step;
+  var endU = Math.ceil(xToUnit(vpWidth) / step) * step;
+  var inGap = function(u) {
+    return AXIS_GAPS.some(function(g) { return u > g.start && u < g.start + g.virtual; });
+  };
+  for (var u = startU; u <= endU; u += step) {
+    if (inGap(u)) continue;
+    var x = u * pixelsPerYear + panX;
+    var tick = document.createElement('div');
+    tick.className = 'tick major';
+    tick.style.left = x + 'px';
+    track.appendChild(tick);
+    var lab = document.createElement('div');
+    lab.className = 'tick-label';
+    lab.style.left = x + 'px';
+    lab.textContent = Math.round(unitToYear(u));
+    track.appendChild(lab);
+  }
+
+  AXIS_GAPS.forEach(function(g) {
+    [yearToX(g.start), yearToX(g.end)].forEach(function(x) {
+      if (x < -20 || x > vpWidth + 20) return;
+      var t = document.createElement('div');
+      t.className = 'tick major';
+      t.style.left = x + 'px';
+      track.appendChild(t);
+    });
+  });
+
+  var nowX = yearToX(NOW_YEAR);
+  if (nowX > -10 && nowX < vpWidth + 10) {
+    var line = document.createElement('div');
+    line.className = 'now-line';
+    line.style.left = nowX + 'px';
+    var nlab = document.createElement('div');
+    nlab.className = 'now-label';
+    nlab.textContent = 'MAINTENANT · 2071';
+    line.appendChild(nlab);
+    track.appendChild(line);
+  }
+
+  // Music events use their own lanes BELOW the main year axis.
+  // All other events continue to use the lanes ABOVE the axis.
+  var LANE_H = 20, FIRST = 22;
+  var aboveMaxLanes = Math.max(1, Math.floor((axisTop - 28) / LANE_H));
+  var belowMaxLanes = Math.max(1, Math.floor((viewport.clientHeight - axisTop - 34) / LANE_H));
+
+  var measure = document.createElement('canvas').getContext('2d');
+  measure.font = '600 12.5px Rajdhani, sans-serif';
+
+  var visible = [];
+  EVENTS.forEach(function(ev, i) {
+    var x = yearToX(dateToYear(ev));
+    if (x < -40 || x > vpWidth + 40) return;
+    visible.push({
+      ev: ev,
+      i: i,
+      x: x,
+      w: measure.measureText(ev.title).width + 16,
+      music: ev.category === 'music'
+    });
+  });
+
+  visible.sort(function(a, b) { return a.x - b.x; });
+
+  var aboveLaneEnd = [];
+  var belowLaneEnd = [];
+  for (var li = 0; li < aboveMaxLanes; li++) aboveLaneEnd.push(-Infinity);
+  for (var bi = 0; bi < belowMaxLanes; bi++) belowLaneEnd.push(-Infinity);
+
+  visible.forEach(function(item) {
+    var start = item.x + 10;
+    var laneEnd = item.music ? belowLaneEnd : aboveLaneEnd;
+    var maxLanes = item.music ? belowMaxLanes : aboveMaxLanes;
+    var lane = -1;
+
+    for (var l = 0; l < maxLanes; l++) {
+      if (start > laneEnd[l] + 8) {
+        lane = l;
+        break;
+      }
+    }
+
+    if (lane === -1) {
+      item.lane = null;
+      return;
+    }
+
+    laneEnd[lane] = start + item.w;
+    item.lane = lane;
+  });
+
+  visible.forEach(function(item) {
+    var ev = item.ev, i = item.i, x = item.x, lane = item.lane;
+    var cat = CONFIG.categories[ev.category] || { color: 'var(--cyan)' };
+
+    var marker = document.createElement('div');
+    marker.className = 'event-marker' + (ev.category === 'music' ? ' music' : '') + (selectedIndex === i ? ' selected' : '');
+    marker.style.left = x + 'px';
+
+    // Music markers sit below the axis; other markers sit directly on it.
+    var markerY = ev.category === 'music'
+      ? axisTop + FIRST + (lane === null ? 0 : lane * LANE_H)
+      : axisTop;
+
+    marker.style.top = markerY + 'px';
+
+    if (ev.category === 'music') {
+      marker.textContent = '💿';
+      marker.style.color = cat.color;
+    } else {
+      marker.style.background = cat.color;
+    }
+
+    (function(idx) {
+      marker.addEventListener('click', function(e) { e.stopPropagation(); selectEvent(idx); });
+    })(i);
+    track.appendChild(marker);
+
+    if (lane !== null && pixelsPerYear > 1) {
+      var isMusic = ev.category === 'music';
+
+      // Non-music labels/stems go upward.
+      // Music labels/stems go downward.
+      var top = isMusic
+        ? axisTop + FIRST + lane * LANE_H
+        : axisTop - FIRST - lane * LANE_H;
+
+      var stem = document.createElement('div');
+      stem.className = 'event-stem';
+      stem.style.left = x + 'px';
+
+      if (isMusic) {
+        stem.style.top = (axisTop + 1) + 'px';
+        stem.style.height = Math.max(0, top - axisTop + 9) + 'px';
+      } else {
+        stem.style.top = (top + 9) + 'px';
+        stem.style.height = Math.max(0, axisTop - top - 9) + 'px';
+      }
+
+      track.appendChild(stem);
+
+      var elab = document.createElement('div');
+      elab.className = 'event-label' + (isMusic ? ' music-label' : '');
+      elab.style.left = (x + 10) + 'px';
+      elab.style.top = top + 'px';
+      elab.style.borderLeftColor = cat.color;
+      elab.textContent = ev.title;
+
+      (function(idx) {
+        elab.addEventListener('click', function(e) { e.stopPropagation(); selectEvent(idx); });
+      })(i);
+
+      track.appendChild(elab);
+    }
+  });
+
+  rangeDisplay.textContent = Math.round(xToYear(0)) + ' — ' + Math.round(xToYear(vpWidth));
+}
+
+
+function legendSetup() {
+  legendEl.innerHTML = '';
+  const items = [
+    { key: "cosmique", label: "Prophétie & Cosmique", color: "var(--cyan)", icon: null },
+    { key: "politique", label: "Politique & Conflits", color: "var(--violet)", icon: null },
+    { key: "racksity", label: "Racksity & Personnages", color: "#94a3b8", icon: null },
+    { key: "music", label: "Sorties musicales", color: "var(--gold)", icon: "💿" },
+  ];
+  items.forEach(c => {
+    const d = document.createElement('div');
+    d.className = 'legend-item';
+    d.style.cursor = 'pointer';
+    d.title = 'Afficher tous les evenements de cette categorie';
+    if (c.icon) {
+      d.innerHTML = '<span style="font-size:14px;margin-right:2px">' + c.icon + '</span>' + c.label;
+    } else {
+      d.innerHTML = '<span class="cat-dot" style="background:' + c.color + '"></span>' + c.label;
+    }
+    d.addEventListener('click', function() { showCategory(c.key); });
+    legendEl.appendChild(d);
+  });
+}
+
+function showCategory(key) {
+  const map = {
+    cosmique: ['prophetie', 'mystique'],
+    politique: ['politique', 'guerre'],
+    racksity: ['racksity'],
+    music: ['music']
+  };
+  const cats = map[key] || [];
+  const list = EVENTS.filter(function(e) { return cats.indexOf(e.category) !== -1; });
+  const labels = {
+    cosmique: 'Prophetie & Cosmique',
+    politique: 'Politique & Conflits',
+    racksity: 'Racksity & Personnages',
+    music: 'Sorties musicales'
+  };
+  if (list.length === 0) {
+    detailPanel.innerHTML = '<p class="empty-state">Aucun evenement dans cette categorie.</p>';
+    return;
+  }
+  list.sort(function(a,b) { return dateToYear(a) - dateToYear(b); });
+  var html = '<div class="detail-eyebrow"><span class="detail-cat">' + (labels[key] || key) + '</span></div>';
+  html += '<h2 style="font-size:18px;margin-bottom:14px">' + list.length + ' evenement' + (list.length > 1 ? 's' : '') + '</h2>';
+  html += '<ul style="list-style:none;padding:0;margin:0">';
+  for (var j = 0; j < list.length; j++) {
+    var ev = list[j];
+    var idx = EVENTS.indexOf(ev);
+    var isMusic = ev.category === 'music';
+    html += '<li style="padding:8px 0;border-bottom:1px solid rgba(15,23,42,0.08);cursor:pointer" data-idx="' + idx + '" class="cat-list-item">';
+    html += '<span style="font-family:var(--font-mono);font-size:12px;color:' + (isMusic ? 'var(--gold)' : 'var(--cyan)') + '">' + formatEventDate(ev) + '</span> ';
+    if (isMusic) html += '💿 ';
+    html += '<strong>' + ev.title + '</strong></li>';
+  }
+  html += '</ul>';
+  detailPanel.innerHTML = html;
+  var items = detailPanel.querySelectorAll('.cat-list-item');
+  for (var k = 0; k < items.length; k++) {
+    items[k].addEventListener('click', function() {
+      var i = parseInt(this.getAttribute('data-idx'), 10);
+      if (!isNaN(i)) selectEvent(i);
+    });
+  }
+}
+
+function selectEvent(i) {
+  if (i < 0 || i >= EVENTS.length) return;
+  selectedIndex = i;
+  var ev = EVENTS[i];
+  var cat = CONFIG.categories[ev.category] || {};
+  var extra = '';
+  if (ev.bandcamp) {
+    extra = '<p style="margin-top:12px"><a href="' + ev.bandcamp + '" target="_blank" rel="noopener">Ecouter sur Bandcamp ↗</a></p>';
+  }
+  var musicIcon = ev.category === 'music' ? '💿 ' : '';
+  detailPanel.innerHTML = 
+    '<div class="detail-eyebrow">' +
+      '<span class="cat-dot" style="background:' + (cat.color || 'var(--cyan)') + '"></span>' +
+      '<span class="detail-date" style="color:' + (ev.category === 'music' ? 'var(--gold)' : 'var(--cyan)') + '">' + formatEventDate(ev) + '</span>' +
+      '<span class="detail-cat">' + (cat.label || '') + '</span>' +
+    '</div>' +
+    '<h2>' + musicIcon + ev.title + '</h2>' +
+    '<p>' + (ev.description || '') + '</p>' +
+    extra;
+  render();
+}
+
+function zoomAt(clientX, factor) {
+  var rect = viewport.getBoundingClientRect();
+  var local = clientX - rect.left;
+  var u = xToUnit(local);
+  pixelsPerYear = clampPPY(pixelsPerYear * factor);
+  panX = clampPan(local - u * pixelsPerYear);
+  render();
+}
+function resetView() {
+  pixelsPerYear = fittedPPY();
+  panX = clampPan(vpWidth / 2 - (DOMAIN_MIN_U + DOMAIN_MAX_U) / 2 * pixelsPerYear);
+  render();
+}
+
+viewport.addEventListener('wheel', function(e) {
+  e.preventDefault();
+  zoomAt(e.clientX, e.deltaY < 0 ? 1.18 : 1 / 1.18);
+}, { passive: false });
+
+var drag = false, startX = 0, startPan = 0;
+viewport.addEventListener('mousedown', function(e) {
+  drag = true; startX = e.clientX; startPan = panX;
+  viewport.classList.add('grabbing');
+});
+window.addEventListener('mousemove', function(e) {
+  if (!drag) return;
+  panX = clampPan(startPan + (e.clientX - startX));
+  render();
+});
+window.addEventListener('mouseup', function() { drag = false; viewport.classList.remove('grabbing'); });
+
+document.getElementById('zoomIn').onclick = function() { zoomAt(viewport.getBoundingClientRect().left + vpWidth / 2, 1.3); };
+document.getElementById('zoomOut').onclick = function() { zoomAt(viewport.getBoundingClientRect().left + vpWidth / 2, 1 / 1.3); };
+document.getElementById('resetView').onclick = resetView;
+document.getElementById('goAncient').onclick = function() {
+  var a = yearToUnit(0), b = yearToUnit(90);
+  pixelsPerYear = clampPPY(vpWidth / ((b - a) * 1.2));
+  panX = clampPan(vpWidth / 2 - (a + b) / 2 * pixelsPerYear);
+  render();
+};
+document.getElementById('goModern').onclick = function() {
+  var a = yearToUnit(2018), b = yearToUnit(2080);
+  pixelsPerYear = clampPPY(vpWidth / ((b - a) * 1.15));
+  panX = clampPan(vpWidth / 2 - (a + b) / 2 * pixelsPerYear);
+  render();
+};
+
+window.addEventListener('resize', function() { render(); });
+legendSetup();
+resetView();
+
+</script>
+</body>
+</html>
